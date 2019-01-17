@@ -1,16 +1,19 @@
 package de.predic8.f_streams;
 
+import de.predic8.ScheduleUtil;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.LongSerializer;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG;
 
 public class VerkaeufeProducer {
+    static final Map<Long, String> wareToWarengruppe = new HashMap<>();
 
     static String[] maerkte = { "Bonn", "Berlin", "Hamburg", "Köln", "Düsseldorf"};
 
@@ -22,21 +25,20 @@ public class VerkaeufeProducer {
         props.put(BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 
-        Producer<Long, Verkauf> producer = new KafkaProducer(props, new LongSerializer(), new JsonPOJOSerializer<Verkauf>() );
+        KafkaProducer<Long, Verkauf> producer = new KafkaProducer(props, new LongSerializer(), new JsonPOJOSerializer<Verkauf>() );
+        ScheduleUtil.scheduleProduction(producer, VerkaeufeProducer::createRecord, 1000);
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> { producer.close(); }));
+    }
 
-        int i = 0;
-        while ( true) {
-            i++;
+    private static ProducerRecord<Long, Verkauf> createRecord() {
+        String markt = maerkte[random(4)];
+        final long ware = random(10);
+        String gruppe = wareToWarengruppe.computeIfAbsent(ware, l -> warengruppen[random(warengruppen.length-1)]);
+        Verkauf verkauf = new Verkauf(ware,random(20), gruppe, markt);
 
-            String markt = maerkte[random(4)];
-            String gruppe = warengruppen[random(2)];
-            Verkauf verkauf = new Verkauf( random(10),random(20), gruppe, markt );
-
-            producer.send(new ProducerRecord<>("verkaeufe", verkauf.getWare(), verkauf));
-            Thread.sleep(1000);
-        }
-
+        System.out.printf("created %s%n", verkauf);
+        return new ProducerRecord<>("verkaeufe", verkauf.getWare(), verkauf);
     }
 
     public static int random(int max) {

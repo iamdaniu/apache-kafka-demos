@@ -1,6 +1,6 @@
 package de.predic8.k_transactions;
 
-import de.predic8.b_offset.OffsetBeginningRebalanceListener;
+import de.predic8.OffsetBeginningRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -8,7 +8,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-import java.time.Duration;
 import java.util.Properties;
 
 import static java.time.Duration.ofMillis;
@@ -28,7 +27,7 @@ public class TransactionalReadWrite {
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerProperties());
 
-        consumer.subscribe(singleton("produktion"),new OffsetBeginningRebalanceListener(consumer,"produktion"));
+        consumer.subscribe(singleton("produktion"),new OffsetBeginningRebalanceListener(consumer));
 
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll( ofMillis(10));

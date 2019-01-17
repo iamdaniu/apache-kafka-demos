@@ -1,11 +1,10 @@
 package de.predic8.b_offset;
 
+import de.predic8.OffsetBeginningRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.Properties;
 
 import static java.time.Duration.ofSeconds;
@@ -27,7 +26,7 @@ public class OffsetConsumer {
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
 
-        consumer.subscribe( singletonList("produktion"), new OffsetBeginningRebalanceListener(consumer, "produktion"));
+        consumer.subscribe( singletonList("toggle"), new OffsetBeginningRebalanceListener(consumer));
 
         while(true) {
 

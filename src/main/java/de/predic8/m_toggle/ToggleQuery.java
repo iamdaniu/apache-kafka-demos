@@ -1,4 +1,4 @@
-package de.predic8.f_streams;
+package de.predic8.m_toggle;
 
 import de.predic8.StreamsUtil;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -19,18 +19,16 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 import java.util.Properties;
 
-public class VerkaeufeApp {
-    private static final String GLOBAL_TABLE_STORE = "verkaeufe_global_table";
-    private static final String STREAM_STORE = "verkaeufe_stream";
+public class ToggleQuery {
+    private static final String GLOBAL_TABLE_STORE = "toggle_global_table";
+    private static final String STREAM_STORE = "toggle_stream";
 
     public static void main(String[] args) throws InterruptedException {
         final Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "verkaeufe");
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "toggle");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
 
-        // Wichtig für store Topic
-        //        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
         final StreamsBuilder builder = new StreamsBuilder();
@@ -38,29 +36,29 @@ public class VerkaeufeApp {
         String storeName = createGlobalTable(builder);
 
         final KafkaStreams streams = StreamsUtil.startStreams(props, builder);
-        ReadOnlyKeyValueStore<Long, Verkauf> store = streams.store(storeName, QueryableStoreTypes.keyValueStore());
+        ReadOnlyKeyValueStore<String, Toggle> store = streams.store(storeName, QueryableStoreTypes.keyValueStore());
 
         printStoreContents(store);
         streams.close();
     }
 
     private static String createGlobalTable(StreamsBuilder builder) {
-        final GlobalKTable<Long, Verkauf> globalKTable = builder.globalTable("verkaeufe",
-                Materialized.<Long, Verkauf, KeyValueStore<Bytes, byte[]>>as(GLOBAL_TABLE_STORE).withKeySerde(Serdes.Long()).withValueSerde(VerkaufSerde.INSTANCE));
+        final GlobalKTable<String, Toggle> globalKTable = builder.globalTable("toggle",
+                Materialized.<String, Toggle, KeyValueStore<Bytes, byte[]>>as(GLOBAL_TABLE_STORE).withKeySerde(Serdes.String()).withValueSerde(ToggleSerde.INSTANCE));
         return GLOBAL_TABLE_STORE;
     }
 
-    private static void printStoreContents(ReadOnlyKeyValueStore<Long, Verkauf> store) {
+    private static void printStoreContents(ReadOnlyKeyValueStore<String, Toggle> store) {
         System.out.println();
-        final KeyValueIterator<Long, Verkauf> all = store.all();
+        final KeyValueIterator<String, Toggle> all = store.all();
         while (all.hasNext()) {
-            final KeyValue<Long, Verkauf> next = all.next();
-            System.out.printf("%d: %s%n", next.key, next.value);
+            final KeyValue<String, Toggle> next = all.next();
+            System.out.printf("%s: %s%n", next.key, next.value);
         }
     }
 
     private static String createStream(StreamsBuilder builder) {
-        final KStream<Long, Verkauf> verkaeufe = builder.stream("verkaeufe-stream", Consumed.with(Serdes.Long(), VerkaufSerde.INSTANCE));
+        final KStream<Long, Toggle> toggle = builder.stream("toggle-stream", Consumed.with(Serdes.Long(), ToggleSerde.INSTANCE));
         return STREAM_STORE;
     }
 }
@@ -78,7 +76,7 @@ public class VerkaeufeApp {
 
                    src
                 .filter((k,v) -> v.getMarkt().equals("Köln"))
-                .to("koeln", Produced.with(Serdes.Long(),new VerkaufSerde()));
+                .to("koeln", Produced.with(Serdes.Long(),new ToggleSerde()));
 
 
                     src
@@ -147,7 +145,7 @@ public class VerkaeufeApp {
 
 
                 KTable byMarkt = src
-                .groupBy((k,v) -> v.getMarkt(), Grouped.with(Serdes.String(), new VerkaufSerde()))
+                .groupBy((k,v) -> v.getMarkt(), Grouped.with(Serdes.String(), new ToggleSerde()))
                 .aggregate( () -> 0,
                         (aggKey, neu, agg) -> agg + neu.getMenge(),
                         Materialized.<String, Integer, KeyValueStore<Bytes, byte[]>>as("by-markt").withValueSerde(Serdes.Integer())
@@ -185,7 +183,7 @@ public class VerkaeufeApp {
 
 
  KTable byMarkt = src
-                .groupBy((k,v) -> v.getMarkt(), Grouped.with(Serdes.String(), new VerkaufSerde()))
+                .groupBy((k,v) -> v.getMarkt(), Grouped.with(Serdes.String(), new ToggleSerde()))
                 .aggregate( () -> 0,
                         (aggKey, neu, agg) -> agg + neu.getMenge(),
                         Materialized.<String, Integer, KeyValueStore<Bytes, byte[]>>as("by-markt").withValueSerde(Serdes.Integer())
